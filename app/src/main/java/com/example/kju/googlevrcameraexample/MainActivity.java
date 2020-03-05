@@ -1,6 +1,7 @@
 package com.example.kju.googlevrcameraexample;
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
@@ -17,40 +18,40 @@ import android.util.Log;
 import android.util.Size;
 import android.view.Surface;
 
+import androidx.annotation.NonNull;
 import com.google.vr.sdk.base.GvrActivity;
 import com.google.vr.sdk.base.GvrView;
+import com.pedro.rtplibrary.rtmp.RtmpDisplay;
+
+import net.ossrs.rtmp.ConnectCheckerRtmp;
 
 import java.util.Arrays;
 
-
-/**
- *
- */
 public class MainActivity extends GvrActivity implements GvrRenderer.GvrRendererEvents {
 
 	private static final String TAG = "MainActivity";
 
 	private GvrView cameraView;
-	private GvrRenderer gvrRenderer;
 
 	private CameraDevice cameraDevice;
-	private CameraManager cameraManager;
 	private CaptureRequest.Builder previewBuilder;
 	private CameraCaptureSession previewSession;
 	private SurfaceTexture surfaceTexture;
 	private StreamConfigurationMap map;
-	private Size previewSize;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		setContentView(R.layout.activity_main);
-
-		cameraView = (GvrView) findViewById(R.id.camera_view);
+		//setContentView(R.layout.activity_main);
+        cameraView = new GvrView(this);//(GvrView) findViewById(R.id.camera_view);
+		//setContentView(mSurfaceView);
+		setContentView(cameraView);
 		setGvrView(cameraView);
 
-		gvrRenderer = new GvrRenderer(cameraView, this);
-		cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+		GvrRenderer gvrRenderer = new GvrRenderer(cameraView, this);
+
+
+
 	}
 	@Override
 	protected void onResume() {
@@ -91,11 +92,13 @@ public class MainActivity extends GvrActivity implements GvrRenderer.GvrRenderer
 	private void openCamera()
 	{
 		try {
+			CameraManager cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
 			String cameraId = cameraManager.getCameraIdList()[0];
 			CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraId);
 			map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
-			previewSize = map.getOutputSizes(SurfaceTexture.class)[0];
+			Size previewSize = map.getOutputSizes(SurfaceTexture.class)[0];
 			cameraManager.openCamera(cameraId, stateCallback, cameraView.getHandler());
+			rtmpIntent();
 		} catch (CameraAccessException e) {
 			e.printStackTrace();
 		} catch (SecurityException e) {
@@ -161,5 +164,53 @@ public class MainActivity extends GvrActivity implements GvrRenderer.GvrRenderer
 	public void onSurfaceTextureCreated(SurfaceTexture surfaceTexture) {
 		this.surfaceTexture = surfaceTexture;
 		openCamera();
+	}
+
+	RtmpDisplay rd;
+	public void rtmpIntent() {
+		rd = new RtmpDisplay(this, true, new ConnectCheckerRtmp() {
+			@Override
+			public void onConnectionSuccessRtmp() {
+
+			}
+
+			@Override
+			public void onConnectionFailedRtmp(@NonNull String reason) {
+
+			}
+
+			@Override
+			public void onNewBitrateRtmp(long bitrate) {
+
+			}
+
+			@Override
+			public void onDisconnectRtmp() {
+
+			}
+
+			@Override
+			public void onAuthErrorRtmp() {
+
+			}
+
+			@Override
+			public void onAuthSuccessRtmp() {
+
+			}
+		});
+		startActivityForResult(rd.sendIntent(), 1);
+	}
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+		Log.d(TAG, "requestCode: "+ requestCode);
+		Log.d(TAG, "resultCode: "+ resultCode);
+		Log.d(TAG, "data: "+ data);
+		rd.setIntentResult(resultCode, data);
+		if (rd.prepareAudio() && rd.prepareVideo(1280, 720, 30,  2500 * 1024, 0, 320)) {//파라미터 넣을수 있음
+			rd.startStream("rtmp://a.rtmp.youtube.com/live2/5zvy-7tgp-f6y8-d2we");
+		} else {
+			//This device cant init encoders, this could be for 2 reasons: The encoder selected doesnt support any configuration setted or your device hasnt a H264 or AAC encoder (in this case you can see log error valid encoder not found)
+		}
 	}
 }

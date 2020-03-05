@@ -18,11 +18,16 @@ android {
         }
     }
 }
-
+allprojects {
+    repositories {
+        maven { url 'https://jitpack.io' }
+    }
+}
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     testImplementation 'junit:junit:4.12'
     implementation 'com.android.support:appcompat-v7:24.2.1'
-    implementation project(':base')
-    implementation project(':common')
+
+    implementation 'com.google.vr:sdk-base:1.190.0'
+    implementation 'com.github.pedroSG94.rtmp-rtsp-stream-client-java:rtplibrary:1.7.7'
 }
