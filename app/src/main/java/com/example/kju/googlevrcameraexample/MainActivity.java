@@ -27,7 +27,7 @@ import net.ossrs.rtmp.ConnectCheckerRtmp;
 
 import java.util.Arrays;
 
-public class MainActivity extends GvrActivity implements GvrRenderer.GvrRendererEvents {
+public class MainActivity extends GvrActivity {
 
 	private static final String TAG = "MainActivity";
 
@@ -44,14 +44,18 @@ public class MainActivity extends GvrActivity implements GvrRenderer.GvrRenderer
 		super.onCreate(savedInstanceState);
 		//setContentView(R.layout.activity_main);
         cameraView = new GvrView(this);//(GvrView) findViewById(R.id.camera_view);
+		//cameraView.setTransitionViewEnabled(false);
 		//setContentView(mSurfaceView);
 		setContentView(cameraView);
 		setGvrView(cameraView);
 
-		GvrRenderer gvrRenderer = new GvrRenderer(cameraView, this);
-
-
-
+		GvrRenderer gvrRenderer = new GvrRenderer(cameraView, new GvrRenderer.GvrRendererEvents() {
+			@Override
+			public void onSurfaceTextureCreated(SurfaceTexture aSurfaceTexture) {
+				surfaceTexture = aSurfaceTexture;
+				openCamera();
+			}
+		});
 	}
 	@Override
 	protected void onResume() {
@@ -68,26 +72,7 @@ public class MainActivity extends GvrActivity implements GvrRenderer.GvrRenderer
 	@Override
 	protected void onDestroy() {
 		super.onDestroy();
-
 	}
-
-	private CameraDevice.StateCallback stateCallback = new CameraDevice.StateCallback() {
-		@Override
-		public void onOpened(CameraDevice camera) {
-			cameraDevice = camera;
-			startPreview();
-		}
-
-		@Override
-		public void onDisconnected(CameraDevice cameraDevice) {
-			Log.d(TAG, "onDisconnected");
-		}
-
-		@Override
-		public void onError(CameraDevice cameraDevice, int i) {
-			Log.e(TAG, "onError");
-		}
-	};
 
 	private void openCamera()
 	{
@@ -97,7 +82,23 @@ public class MainActivity extends GvrActivity implements GvrRenderer.GvrRenderer
 			CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraId);
 			map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
 			Size previewSize = map.getOutputSizes(SurfaceTexture.class)[0];
-			cameraManager.openCamera(cameraId, stateCallback, cameraView.getHandler());
+			cameraManager.openCamera(cameraId, new CameraDevice.StateCallback() {
+				@Override
+				public void onOpened(CameraDevice camera) {
+					cameraDevice = camera;
+					startPreview();
+				}
+
+				@Override
+				public void onDisconnected(CameraDevice cameraDevice) {
+					Log.d(TAG, "onDisconnected");
+				}
+
+				@Override
+				public void onError(CameraDevice cameraDevice, int i) {
+					Log.e(TAG, "onError");
+				}
+			}, cameraView.getHandler());
 			rtmpIntent();
 		} catch (CameraAccessException e) {
 			e.printStackTrace();
@@ -158,12 +159,6 @@ public class MainActivity extends GvrActivity implements GvrRenderer.GvrRenderer
 		} catch (CameraAccessException e) {
 			e.printStackTrace();
 		}
-	}
-
-	@Override
-	public void onSurfaceTextureCreated(SurfaceTexture surfaceTexture) {
-		this.surfaceTexture = surfaceTexture;
-		openCamera();
 	}
 
 	RtmpDisplay rd;
